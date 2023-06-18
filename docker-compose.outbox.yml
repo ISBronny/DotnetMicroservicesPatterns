@@ -1,0 +1,154 @@
+version: '3.7'
+
+volumes:
+  pgdata:
+    
+services:
+  api:
+    image: 'outbox.services.api'
+    build:
+      context: .
+      dockerfile: Outbox.Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - ConnectionStrings_Postgres=host=postgres;port=5432;database=outbox;username=postgres;password=postgres123;Pooling=true;
+    depends_on:
+      - "seq"
+      - "zipkin"
+      - "zookeeper"
+      - "kafka1"
+      - "kafka2"
+      - "kafka3"
+      - "postgres"
+    profiles:
+      - local
+        
+  postgres:
+    container_name: postgres
+    image: postgres
+    ports:
+      - 5432:5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres123
+    profiles:
+      - devenv
+      - local
+  
+  seq:
+    container_name: seq
+    image: datalust/seq:latest
+    ports:
+      - '80:80'
+      - '5341:5341'
+    environment:
+      ACCEPT_EULA: Y
+    profiles:
+      - devenv
+      - local
+      
+  kafka-ui:
+    container_name: kafka-ui
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - 8080:8080
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+      - connect
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:9092,kafka2:9092,kafka3:9092
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: first
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: connect:8083
+      DYNAMIC_CONFIG_ENABLED: 'true'
+    profiles:
+      - devenv
+      - local
+  
+  
+  zipkin:
+    container_name: zipkin
+    image: ghcr.io/openzipkin/zipkin-slim:latest
+    environment:
+      STORAGE_TYPE: mem
+    ports:
+      - 9411:9411
+    profiles:
+      - devenv
+      - local
+
+  
+  zookeeper:
+    container_name: zookeeper
+    image: confluentinc/cp-zookeeper:latest
+    ports:
+      - 2181:2181
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    profiles:
+      - devenv
+      - local
+    
+  kafka1: &kafka
+    container_name: kafka1
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - 9094:9092
+    links:
+      - zookeeper
+    environment: &kafka_env
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,OUTSIDE://0.0.0.0:9094
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka1:9092,OUTSIDE://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+    profiles:
+      - devenv
+      - local
+  
+  kafka2:
+    <<: *kafka
+    container_name: kafka2
+    ports:
+      - 9095:9092
+    environment:
+      <<: *kafka_env
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka2:9092,OUTSIDE://localhost:9095
+    
+  kafka3:
+    <<: *kafka
+    container_name: kafka3
+    ports:
+      - 9096:9092
+    environment:
+      <<: *kafka_env
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka3:9092,OUTSIDE://localhost:9096
+    
+  
+  connect:
+    container_name: connect
+    image: debezium/connect
+    ports:
+      - 8083:8083
+    links:
+      - kafka1
+      - kafka2
+      - kafka3
+      - postgres
+    environment:
+      BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9092,kafka3:9092
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: my_connect_configs
+      OFFSET_STORAGE_TOPIC: my_connect_offsets
+      STATUS_STORAGE_TOPIC: my_connect_statuses
+    profiles:
+      - devenv
+      - local
