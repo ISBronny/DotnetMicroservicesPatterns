@@ -20,13 +20,13 @@ public class DebeziumReaderJob : IJob
 		var config = new ConsumerConfig
 		{
 			BootstrapServers = _options.Value.BootstrapServers,
-			GroupId = "foo",
+			GroupId = "1",
 			AutoOffsetReset = AutoOffsetReset.Earliest
 		};
 
-		using var consumer = new ConsumerBuilder<Ignore, string>(config).Build();
+		using var consumer = new ConsumerBuilder<string, string>(config).Build();
 		
-		consumer.Subscribe("postgres.outbox.orders");
+		consumer.Subscribe("postgres.public.orders");
 
 		while (true)
 		{

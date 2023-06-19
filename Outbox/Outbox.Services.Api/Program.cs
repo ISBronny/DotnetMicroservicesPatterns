@@ -22,6 +22,10 @@ builder.Services.AddCustomTelemetry(builder.Configuration);
 builder.Services.AddQuartz(q =>
 {
 	q.UseInMemoryStore();
+	q.UseMicrosoftDependencyInjectionJobFactory();
+	q.ScheduleJob<DebeziumReaderJob>(o =>
+		o.WithIdentity(nameof(DebeziumReaderJob))
+			.StartNow());
 });
 builder.Services.AddQuartzServer(options =>
 {
