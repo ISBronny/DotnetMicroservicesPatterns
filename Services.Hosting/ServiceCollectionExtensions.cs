@@ -11,7 +11,7 @@ public static class ServiceCollectionExtensions
 	{
 		var loggerConfiguration = new LoggerConfiguration()
 			.Enrich.FromLogContext()
-			.WriteTo.Seq(configuration.GetConnectionString("Seq")!)
+			.WriteTo.Seq(configuration.GetConnectionString("Seq")!, period: TimeSpan.FromMilliseconds(100))
 			.WriteTo.Console();
 		
 		return services.AddSerilog(loggerConfiguration.CreateLogger());
@@ -23,6 +23,9 @@ public static class ServiceCollectionExtensions
 			.WithTracing(c =>
 			{
 				c.AddZipkinExporter();
+			}).WithMetrics(c =>
+			{
+				
 			});
 
 		return services;

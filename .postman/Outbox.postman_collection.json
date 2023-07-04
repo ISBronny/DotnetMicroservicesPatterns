@@ -1,0 +1,93 @@
+{
+	"info": {
+		"_postman_id": "a83c0bc4-cdd1-4020-9399-674f82635ca1",
+		"name": "Outbox",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "19588325"
+	},
+	"item": [
+		{
+			"name": "Create Postgres Connector",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"name\": \"pg-connector\",\r\n    \"config\": {\r\n        \"connector.class\": \"io.debezium.connector.postgresql.PostgresConnector\",\r\n        \"plugin.name\": \"pgoutput\",\r\n        \"database.hostname\": \"postgres\",\r\n        \"database.port\": \"5432\",\r\n        \"database.user\": \"postgres\",\r\n        \"database.password\": \"postgres123\",\r\n        \"database.dbname\": \"outbox\",\r\n        \"table.include.list\": \"public.(.*)\",\r\n        \"heartbeat.interval.ms\": \"5000\",\r\n        \"slot.name\": \"dbname_debezium\",\r\n        \"publication.name\": \"dbname_publication\",\r\n        \"topic.prefix\": \"postgres\"\r\n    }\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8083/connectors",
+					"host": [
+						"localhost"
+					],
+					"port": "8083",
+					"path": [
+						"connectors"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get List of Connectors",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:8083/connectors",
+					"host": [
+						"localhost"
+					],
+					"port": "8083",
+					"path": [
+						"connectors"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Validate Postgres Conector Configuration",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"name\": \"pg-connector\",\r\n    \"connector.class\": \"io.debezium.connector.postgresql.PostgresConnector\",\r\n    \"plugin.name\": \"pgoutput\",\r\n    \"key.converter.schemas.enable\": false,\r\n    \"value.converter.schemas.enable\": false,\r\n    \"database.hostname\": \"postgres\",\r\n    \"database.port\": \"5432\",\r\n    \"database.user\": \"postgres\",\r\n    \"database.password\": \"postgres123\",\r\n    \"database.dbname\": \"outbox\",\r\n    \"table.include.list\": \"public.(.*)\",\r\n    \"heartbeat.interval.ms\": \"5000\",\r\n    \"slot.name\": \"dbname_debezium\",\r\n    \"publication.name\": \"dbname_publication\",\r\n    \"topic.prefix\": \"postgres\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8083/connector-plugins/PostgresConnector/config/validate",
+					"host": [
+						"localhost"
+					],
+					"port": "8083",
+					"path": [
+						"connector-plugins",
+						"PostgresConnector",
+						"config",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Connector",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		}
+	]
+}

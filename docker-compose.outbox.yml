@@ -16,10 +16,8 @@ services:
     depends_on:
       - "seq"
       - "zipkin"
-      - "zookeeper"
-      - "kafka1"
-      - "kafka2"
-      - "kafka3"
+      - "zoo"
+      - "kafka"
       - "postgres"
     profiles:
       - local
@@ -60,20 +58,17 @@ services:
     ports:
       - 8080:8080
     depends_on:
-      - kafka1
-      - kafka2
-      - kafka3
+      - kafka
       - connect
     environment:
       KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:9092,kafka2:9092,kafka3:9092
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: first
       KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: connect:8083
       DYNAMIC_CONFIG_ENABLED: 'true'
     profiles:
       - devenv
       - local
-  
   
   zipkin:
     container_name: zipkin
@@ -85,55 +80,37 @@ services:
     profiles:
       - devenv
       - local
-
   
-  zookeeper:
-    container_name: zookeeper
-    image: confluentinc/cp-zookeeper:latest
+  
+  zoo:
+    image: confluentinc/cp-zookeeper:7.3.2
+    hostname: zoo
+    container_name: zoo
     ports:
-      - 2181:2181
+      - "2181:2181"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-    profiles:
-      - devenv
-      - local
-    
-  kafka1: &kafka
-    container_name: kafka1
-    image: confluentinc/cp-kafka:latest
+
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.2
+    hostname: kafka
+    container_name: kafka
+    ports:
+      - "0.0.0.0:9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zoo:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     depends_on:
-      - zookeeper
-    ports:
-      - 9094:9092
-    links:
-      - zookeeper
-    environment: &kafka_env
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka1:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
-      KAFKA_JMX_PORT: 9991
+      - zoo
     profiles:
       - devenv
       - local
-  
-  kafka2:
-    <<: *kafka
-    container_name: kafka2
-    ports:
-      - 9095:9092
-    environment:
-      <<: *kafka_env
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:9092
-    
-  kafka3:
-    <<: *kafka
-    container_name: kafka3
-    ports:
-      - 9096:9092
-    environment:
-      <<: *kafka_env
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka3:9092
+      
   
   connect:
     container_name: connect
@@ -141,12 +118,10 @@ services:
     ports:
       - 8083:8083
     depends_on:
-      - kafka1
-      - kafka2
-      - kafka3
+      - kafka
       - postgres
     environment:
-      BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9092,kafka3:9092
+      BOOTSTRAP_SERVERS: kafka:29092
       GROUP_ID: 1
       CONFIG_STORAGE_TOPIC: my_connect_configs
       OFFSET_STORAGE_TOPIC: my_connect_offsets

@@ -3,10 +3,12 @@ using FlueFlame.Http.Host;
 using FlueFlame.Serialization.Newtonsoft;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 
 namespace Outbox.AcceptanceTests;
 
-public abstract class TestBase
+public abstract class TestBase : IDisposable
 {
 	protected IFlueFlameHttpHost HttpHost { get; }
 	protected IServiceProvider ServiceProvider { get; }
@@ -17,7 +19,10 @@ public abstract class TestBase
 		var webApp = new WebApplicationFactory<Program>()
 			.WithWebHostBuilder(builder =>
 			{
-				
+				builder.ConfigureServices(services =>
+				{
+					services.RemoveAll<IHostedService>();
+				});
 			});
 
 		TestServer = webApp.Server;
@@ -41,5 +46,10 @@ public abstract class TestBase
 			});
 		});
 		
+	}
+
+	public void Dispose()
+	{
+		TestServer.Dispose();
 	}
 }

@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Localization;
 using Outbox.Application.AutoMapper;
 using Outbox.Application.Persistent;
 using Outbox.Domain.Handlers;
@@ -7,7 +6,7 @@ using Outbox.Infra.Data;
 using Outbox.Services.Api.Background;
 using Outbox.Services.Api.Middleware;
 using Prometheus;
-using Quartz;
+using Serilog;
 using Services.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,23 +15,13 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+
+builder.Host.UseSerilog();
+
 builder.Services.AddCustomLogging(builder.Configuration);
 builder.Services.AddCustomTelemetry(builder.Configuration);
 
-builder.Services.AddQuartz(q =>
-{
-	q.UseInMemoryStore();
-	q.UseMicrosoftDependencyInjectionJobFactory();
-	q.ScheduleJob<DebeziumReaderJob>(o =>
-		o.WithIdentity(nameof(DebeziumReaderJob))
-			.StartNow());
-});
-builder.Services.AddQuartzServer(options =>
-{
-	options.WaitForJobsToComplete = true;
-});
-
-builder.Services.AddOptions<KafkaOptions>();
+builder.Services.AddOptions<KafkaOptions>().Bind(builder.Configuration.GetSection(KafkaOptions.Key));
 
 builder.Services.AddDbContext<OutboxDbContext>(
 	x => x.UseNpgsql(builder.Configuration.GetConnectionString("Postgres")));
@@ -44,6 +33,8 @@ builder.Services.AddLocalization(options => options.ResourcesPath = ".");
 
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<CreateOrder.CreateOrderRequestHandler>());
 builder.Services.AddAutoMapper(typeof(OrdersProfile));
+	
+builder.Services.AddHostedService<DebeziumReaderJob>();
 
 var app = builder.Build();
 
